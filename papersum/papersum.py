@@ -82,7 +82,7 @@ class FalconPipeline:
         )
 
     def generate(self, pre_prompt, paper, max_chars=None):
-        while self.count_tokens(paper) > self.max_tokens - 256:
+        while self.count_tokens(paper) > self.max_tokens - 512:
             paper = paper[: int(len(paper) * 0.8)]
         prompt = self._generate_prompt(pre_prompt, paper)
         # Ensure that the prompt is an str
