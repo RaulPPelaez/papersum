@@ -6,7 +6,7 @@ from time import sleep
 import sys
 
 prompts = [
-    "Can you give me a very clear explanation of the core assertions, implications, and mechanics elucidated in this paper? Like you're talking to a CEO. So what? What's the bottom line here? Be as concise as posible, I must read it in under 30 seconds. Start your answer by stating the title of the paper. Below are the contents of the paper:",
+    "Can you give me a very clear explanation of the core assertions, implications, and mechanics elucidated in this paper? Like you're talking to a CEO. So what? What's the bottom line here? Be as concise as posible, I must read it in under 30 seconds. Start your answer by stating the title of the paper. Below are the contents of the paper (note that the paper might be truncated):",
 ]
 
 
@@ -71,7 +71,7 @@ class FalconPipeline:
     def count_tokens(self, text):
         return self.tokenizer(text, return_tensors="pt").input_ids.shape[1]
 
-    def _generate_prompt(self, prompt, text, max_chars):
+    def _generate_prompt(self, prompt, text, max_chars=-1):
         return (
             "Customer:\n"
             + prompt
@@ -82,15 +82,9 @@ class FalconPipeline:
         )
 
     def generate(self, pre_prompt, paper, max_chars=None):
-        if max_chars is None:
-            max_chars = 3000 if self.max_tokens == 2048 else 16000
-        print(f"Max chars: {max_chars}")
-        prompt = self._generate_prompt(pre_prompt, paper, max_chars)
-        while self.count_tokens(prompt) > self.max_tokens - 512:
-            print("Prompt too long ({self.count_tokens(prompt)} tokens), shortening...")
-            prompt = prompt[: int(len(prompt) * 0.8)]
-        print(f"Prompt length: {self.count_tokens(prompt)} tokens")
-        print(f"Prompt:\n{prompt}")
+        while self.count_tokens(paper) > self.max_tokens - 256:
+            paper = paper[: int(len(paper) * 0.8)]
+        prompt = self._generate_prompt(pre_prompt, paper)
         # Ensure that the prompt is an str
         sequences = self.pipeline(
             prompt,
