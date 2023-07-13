@@ -9,6 +9,7 @@ prompts = [
     "Can you give me a very clear explanation of the core assertions, implications, and mechanics elucidated in this paper? Like you're talking to a CEO. So what? What's the bottom line here? Be as concise as posible, I must read it in under 30 seconds. Start your answer by stating the title of the paper. Below are the contents of the paper:",
 ]
 
+
 class HiddenPrints:
     def __enter__(self):
         # self._original_stdout = sys.stdout
@@ -16,6 +17,7 @@ class HiddenPrints:
         # sys.stdout = open(os.devnull, 'w')
         # sys.stderr = open(os.devnull, 'w')
         pass
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         # sys.stdout.close()
         # sys.stdout = self._original_stdout
@@ -23,20 +25,35 @@ class HiddenPrints:
         # sys.stderr = self._original_stderr
         pass
 
-def generate_prompt(prompt, text, max_chars):
-    return "Customer:\n" + prompt + "\n-----------------\n"+ text[:max_chars]+ "\n-----------------\n" + "Assistant:\n"
 
+def generate_prompt(prompt, text, max_chars):
+    return (
+        "Customer:\n"
+        + prompt
+        + "\n-----------------\n"
+        + text[:max_chars]
+        + "\n-----------------\n"
+        + "Assistant:\n"
+    )
 
 
 class FalconPipeline:
     def __init__(self, model_id=None):
         with HiddenPrints():
             import torch
-            from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, BitsAndBytesConfig
+            from transformers import (
+                AutoTokenizer,
+                AutoModelForCausalLM,
+                pipeline,
+                BitsAndBytesConfig,
+            )
 
         model_id = model_id if model_id is not None else "tiiuae/falcon-40b-instruct"
         print(f"Loading model {model_id}")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_id, truncation="longest_first",)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_id,
+            truncation="longest_first",
+        )
         self.max_tokens = self.tokenizer.model_max_length
         print(f"Max tokens: {self.max_tokens}")
 
@@ -69,9 +86,9 @@ class FalconPipeline:
         if max_chars is None:
             max_chars = 3000 if self.max_tokens == 2048 else 16000
         prompt = generate_prompt(prompt, paper, max_chars)
-        while self.count_tokens(prompt) > self.max_tokens-512:
-             prompt = prompt[:int(len(prompt)*0.8)]
-        #Ensure that the prompt is an str
+        while self.count_tokens(prompt) > self.max_tokens - 512:
+            prompt = prompt[: int(len(prompt) * 0.8)]
+        # Ensure that the prompt is an str
         sequences = self.pipeline(
             prompt,
             max_length=self.max_tokens,
@@ -95,31 +112,35 @@ class OpenAIPipeline:
             raise ValueError(
                 f"API key file {api_key_file} not found. Please write your API key to this file."
             )
-        with open(api_key_file, 'r', encoding='utf-8', errors='ignore') as infile:
+        with open(api_key_file, "r", encoding="utf-8", errors="ignore") as infile:
             openai.api_key = infile.read().strip()
 
     def count_tokens(self, text):
         import tiktoken
+
         encoding = tiktoken.get_encoding("cl100k_base")
         return len(encoding.encode(text))
 
     def generate(self, prompt, paper, max_chars=16000):
         import openai
+
         retry = 0
         max_retry = 3
         while retry < max_retry:
             try:
-                conversation = [{'role':'system', 'content': paper}]
-                conversation.append({'role':'user', 'content': prompt})
+                conversation = [{"role": "system", "content": paper}]
+                conversation.append({"role": "user", "content": prompt})
                 response = openai.ChatCompletion.create(
-                    model=self.model_id, messages=conversation, temperature=self.temperature
+                    model=self.model_id,
+                    messages=conversation,
+                    temperature=self.temperature,
                 )
                 text = response["choices"][0]["message"]["content"]
                 return text
             except Exception as oops:
                 print(f'\n\nError communicating with OpenAI: "{oops}"')
                 if "maximum context length" in str(oops):
-                    paper = paper[:int(len(paper) * 0.8)]
+                    paper = paper[: int(len(paper) * 0.8)]
                     continue
                 retry += 1
                 if retry >= max_retry:
@@ -188,4 +209,14 @@ def run():
         spinner.stop()
         print(f"Result: {response}")
         with open("output.txt", "a") as f:
-            f.write(prompt + "\n" + response + "\n")
+            separator = "===========NEW ARTICLE=========="
+            f.write(separator + "\n")
+            f.write(title + "\n")
+            f.write(
+                "------PROMPT------\n"
+                + prompt
+                + "\n"
+                + "------RESPONSE------\n"
+                + response
+                + "\n"
+            )
