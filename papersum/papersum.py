@@ -26,17 +26,6 @@ class HiddenPrints:
         pass
 
 
-def generate_prompt(prompt, text, max_chars):
-    return (
-        "Customer:\n"
-        + prompt
-        + "\n-----------------\n"
-        + text[:max_chars]
-        + "\n-----------------\n"
-        + "Assistant:\n"
-    )
-
-
 class FalconPipeline:
     def __init__(self, model_id=None):
         with HiddenPrints():
@@ -82,12 +71,26 @@ class FalconPipeline:
     def count_tokens(self, text):
         return self.tokenizer(text, return_tensors="pt").input_ids.shape[1]
 
-    def generate(self, prompt, paper, max_chars=None):
+    def _generate_prompt(self, prompt, text, max_chars):
+        return (
+            "Customer:\n"
+            + prompt
+            + "\n-----------------\n"
+            + text[:max_chars]
+            + "\n-----------------\n"
+            + "Assistant:\n"
+        )
+
+    def generate(self, pre_prompt, paper, max_chars=None):
         if max_chars is None:
             max_chars = 3000 if self.max_tokens == 2048 else 16000
-        prompt = generate_prompt(prompt, paper, max_chars)
+        print(f"Max chars: {max_chars}")
+        prompt = self._generate_prompt(pre_prompt, paper, max_chars)
         while self.count_tokens(prompt) > self.max_tokens - 512:
+            print("Prompt too long ({self.count_tokens(prompt)} tokens), shortening...")
             prompt = prompt[: int(len(prompt) * 0.8)]
+        print(f"Prompt length: {self.count_tokens(prompt)} tokens")
+        print(f"Prompt:\n{prompt}")
         # Ensure that the prompt is an str
         sequences = self.pipeline(
             prompt,
