@@ -4,8 +4,7 @@ import requests
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from urllib.parse import quote
-import pdfplumber
-
+from PyPDF2 import PdfReader
 def fetch_arxiv_papers(topic: str, days_ago: int = 2, maxpapers: int = 4):
     """
     Fetches arxiv papers for a given topic and date range.
@@ -57,9 +56,13 @@ def fetch_arxiv_papers(topic: str, days_ago: int = 2, maxpapers: int = 4):
             with open(filename, "wb") as f:
                 f.write(paper.content)
 
-        with pdfplumber.open(filename) as pdf:
-            paper_text = "\n".join(page.extract_text() for page in pdf.pages)
-
+        # with pdfplumber.open(filename) as pdf:
+        #     paper_text = "\n".join(page.extract_text(x_tolerance=1) for page in pdf.pages)
+        with open(filename, 'rb') as f:
+            pdf = PdfReader(f)
+            paper_text = ''
+            for page in pdf.pages:
+                paper_text += page.extract_text()
         papers[title] = paper_text
 
     return papers

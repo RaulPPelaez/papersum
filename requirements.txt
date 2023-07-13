@@ -4,6 +4,5 @@ bitsandbytes>=0.39
 torch>=2
 halo
 pypdf2
-pdfplumber
 tiktoken
 bs4
