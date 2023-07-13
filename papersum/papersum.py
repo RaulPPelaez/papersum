@@ -104,20 +104,22 @@ class OpenAIPipeline:
         return len(encoding.encode(text))
 
     def generate(self, prompt, paper, max_chars=16000):
+        import openai
         retry = 0
         max_retry = 3
         while retry < max_retry:
             try:
-                conversation = (
-                    generate_prompt(prompt, paper, max_chars),
-                )
+                conversation = [{'role':'system', 'content': paper}]
+                conversation.append({'role':'user', 'content': prompt})
                 response = openai.ChatCompletion.create(
                     model=self.model_id, messages=conversation, temperature=self.temperature
                 )
+                text = response["choices"][0]["message"]["content"]
+                return text
             except Exception as oops:
                 print(f'\n\nError communicating with OpenAI: "{oops}"')
                 if "maximum context length" in str(oops):
-                    max_chars = int(max_chars*0.75)
+                    paper = paper[:int(len(paper) * 0.8)]
                     continue
                 retry += 1
                 if retry >= max_retry:
@@ -125,8 +127,6 @@ class OpenAIPipeline:
                     exit(1)
                 print(f"\n\nRetrying in {2 ** (retry - 1) * 5} seconds...")
                 sleep(2 ** (retry - 1) * 5)
-            text = response["choices"][0]["message"]["content"]
-        return text
 
 
 def run():
@@ -176,8 +176,7 @@ def run():
     # Take on files ending in .txt
     for title, text in papers.items():
         print(f"Summarizing article {title}:")
-        with HiddenPrints():
-            ntokens = pipeline.count_tokens(text)
+        ntokens = pipeline.count_tokens(text)
         print(f"Article contains {ntokens} tokens")
         if ntokens > pipeline.max_tokens:
             print(
@@ -185,8 +184,7 @@ def run():
             )
         spinner = Halo(text="Thinking...", spinner="dots")
         spinner.start()
-        with HiddenPrints():
-            response = pipeline.generate(prompt, text)
+        response = pipeline.generate(prompt, text)
         spinner.stop()
         print(f"Result: {response}")
         with open("output.txt", "a") as f:
