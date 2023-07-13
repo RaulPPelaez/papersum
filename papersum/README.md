@@ -18,7 +18,7 @@ Use the falcon pipeline for huggingface models (even non-falcon ones)
 ```bash
 papersum --topic="neural network potentials" --max_papers=1 --pipeline=falcon --model="tiiuae/falcon-40b-instruct"
 ```
-
+ 
 Use the openai pipeline for OpenAI models
 ```bash
 papersum --topic="neural network potentials" --max_papers=1 --pipeline=openai --model="gpt-3.5-turbo-16k"
